@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">ReminderApp</string>
+    <string name="reminder_interval_hours">Reminder interval (minutes)</string>
+    <string name="start_reminder">Start Reminder</string>
+    <string name="eta">ETA</string>
+</resources>
