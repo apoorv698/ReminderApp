@@ -1,23 +1,28 @@
 package com.example.reminderapp;
 
+import static com.example.reminderapp.globalConfigs.*;
+
+import android.content.res.Resources;
+import android.graphics.Color;
 import android.os.Bundle;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
 
 import android.os.Build;
 import android.text.TextUtils;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.core.content.ContextCompat;
+import androidx.work.Data;
 import androidx.work.ExistingPeriodicWorkPolicy;
-import androidx.work.OneTimeWorkRequest;
 import androidx.work.PeriodicWorkRequest;
 import androidx.work.WorkManager;
 
@@ -29,33 +34,94 @@ import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final String PREFS = "water_prefs";
-    private static final String KEY_INTERVAL = "interval_minutes";
-    private static final String KEY_ETA = "next_eta";
-
     EditText editText;
     TextView etaBox;
+    Spinner spinner;
+    int itemIndex;
+    String PREFS, KEY_ETA, KEY_INTERVAL;
+
+    final private String[] items = new String[]{"Water", "Dinner", "Journaling", "Random Stuff"};
+    final private String[] upperBoundMessage = new String[]{
+            "Cutie drink one glass every 4 hours",
+            "Cutie have some food every 6-7 hours",
+            "Cutie journal once a day",
+            "Cutie a random thought a days is good",
+    };
+    final private String[] lowerBoundMessage = new String[]{
+            "Cutie wait for 30 minutes between two sips",
+            "Cutie wait for couple of hour between food",
+            "Cutie relax for few hours before writing again",
+            "Cutie you are so strong already",
+    };
+
+    final private String[] reminderType = new String[] {"WaterReminder","FoodReminder", "JournalingReminder",
+    "RandomReminder"};
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
+        itemIndex = -1;
+
+        spinner = findViewById(R.id.dropDownList);
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, items);
+        spinner.setAdapter(adapter);
 
         Button button = findViewById(R.id.start);
         editText = (EditText) findViewById(R.id.time);
         etaBox = (TextView) findViewById(R.id.ETABox);
+
+        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
+                if (i >=0 && i<=3) {
+                    MainActivity.this.itemIndex = i;
+                    updateBackground(MainActivity.this, i);
+                }
+                else
+                    Toast.makeText(MainActivity.this, "InCorrect option", Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> adapterView) {
+
+            }
+        });
+
+        if (itemIndex == -1)
+            itemIndex = 0; // default to water.. kind of important ;)
+
+        updateBackground(this, itemIndex);
+
+        PREFS = GLOBAL_PREFS[itemIndex];
+        KEY_INTERVAL = GLOBAL_KEY_INTERVAL[itemIndex];
+        KEY_ETA = GLOBAL_KEY_ETA[itemIndex];
+
         restoreSavedData();
 
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                scheduleWaterReminder();
+                scheduleWaterReminder(MainActivity.this.itemIndex);
             }
         });
 
         // scheduleWaterReminder();
         requestNotificationPermission();
+    }
+
+    private void updateBackground(MainActivity cls, int itemIndex) {
+        View rootLayout = findViewById(R.id.main);
+
+        int hexColor = R.color.bg_water;
+        if (itemIndex == 1) hexColor = R.color.bg_food;
+        else if (itemIndex == 2) hexColor = R.color.bg_journaling;
+        else if (itemIndex == 3) hexColor = R.color.bg_random;
+
+        int color = ContextCompat.getColor(cls, hexColor);
+        rootLayout.setBackgroundColor(color);
+
     }
 
     private void restoreSavedData() {
@@ -93,7 +159,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-    private void scheduleWaterReminder() {
+    private void scheduleWaterReminder(int itemIndex) {
         /* testing code
         OneTimeWorkRequest workRequest =
                 new OneTimeWorkRequest.Builder(ReminderWorker.class)
@@ -111,39 +177,41 @@ public class MainActivity extends AppCompatActivity {
 
         long minutes = Long.parseLong(input);
         if (minutes > 240) {
-            Toast.makeText(this, "Cutie drink one glass every 4 hours", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, upperBoundMessage[itemIndex], Toast.LENGTH_LONG).show();
             minutes = 240;
         }
 
         if (minutes < 30 ) {
-            Toast.makeText(this, "Cutie wait for 30 minutes between two sips", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, lowerBoundMessage[itemIndex], Toast.LENGTH_LONG).show();
             minutes = 30;
         }
+
+        Data inputData = new Data.Builder()
+                .putInt(KEY_WORKER,itemIndex)
+                .build();
 
         PeriodicWorkRequest workRequest =
                 new PeriodicWorkRequest.Builder(
                         ReminderWorker.class,
                         minutes,
                         TimeUnit.MINUTES
-                ).build();
+                ).setInputData(inputData).build();
 
         WorkManager.getInstance(this)
                 .enqueueUniquePeriodicWork(
-                        "WaterReminder",
-                        ExistingPeriodicWorkPolicy.KEEP,
+                        reminderType[itemIndex],
+                        ExistingPeriodicWorkPolicy.UPDATE,
                         workRequest
                 );
-
-
         long eta = System.currentTimeMillis() +
                 TimeUnit.MINUTES.toMillis(minutes);
 
         savePreferences(minutes, eta);
         updateEtaText(eta);
-        
-        String etaTime = String.valueOf(minutes) + "minutes";
 
-        Toast.makeText(this, "Reminder in "+ etaTime +". Start Hydrated!", Toast.LENGTH_LONG).show();
+        String etaTime = String.valueOf(minutes) + " mins";
+
+        Toast.makeText(this, "Reminder in "+ etaTime +". Stay strong \uD83D\uDCAA!", Toast.LENGTH_LONG).show();
     }
 
     private void requestNotificationPermission() {

@@ -3,4 +3,8 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
     <color name="blue">#0080fe</color> <!-- azure-->
+    <color name="bg_water">#1E3A5F</color>
+    <color name="bg_food">#4E342E</color>
+    <color name="bg_journaling">#3B2C54</color>
+    <color name="bg_random">#1F3D36</color>
 </resources>

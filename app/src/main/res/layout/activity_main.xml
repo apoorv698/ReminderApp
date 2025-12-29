@@ -7,6 +7,28 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@id/time"
+        android:layout_centerHorizontal="true"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="20dp"
+            android:text="Reminder Type:"/>
+        <Spinner
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="20dp"
+            android:background="@android:drawable/btn_dropdown"
+            android:elevation="4dp"
+            android:spinnerMode="dropdown"
+            android:id="@+id/dropDownList"/>
+
+    </LinearLayout>
     <EditText
         android:id="@+id/time"
         android:layout_centerInParent="true"
@@ -34,5 +56,7 @@
         android:layout_below="@id/start"
         android:layout_centerInParent="true"
         android:hint="@string/eta"/>
+
+
 
 </RelativeLayout>
